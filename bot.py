@@ -6,6 +6,12 @@ from aiogram.fsm.state import StatesGroup, State
 import asyncio
 import os
 from dotenv import load_dotenv
+from datetime import datetime
+import logging
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -112,7 +118,21 @@ async def finish(message: Message, state: FSMContext):
     await message.answer("✅ Анкета принята. Ожидайте рассмотрения.")
     await state.clear()
 
+# Фоновая задача для поддержания активности (защита от замедления)
+async def keepalive_task():
+    """Периодический ping для предотвращения замедления на бесплатных инстансах"""
+    while True:
+        try:
+            await asyncio.sleep(60)  # Ждём 60 секунд
+            me = await bot.get_me()
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            logger.info(f"[{current_time}] Бот активен: @{me.username}")
+        except Exception as e:
+            logger.error(f"Ошибка в keepalive_task: {e}")
+
 async def main():
+    # Запуск фоновой задачи
+    asyncio.create_task(keepalive_task())
     await dp.start_polling(bot)
 
 asyncio.run(main())
